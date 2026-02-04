@@ -504,7 +504,8 @@ def process_data(df, header_map, schema, source_file):
         # Map row data to canonical columns
         lead_data = {}
         for original_header, canonical_column in header_map.items():
-            value = row.get(original_header, '')
+            # FIX: Use bracket notation for pandas Series
+            value = row[original_header] if original_header in row.index else ''
             lead_data[canonical_column] = str(value) if pd.notna(value) else ''
         
         # Generate lead ID
