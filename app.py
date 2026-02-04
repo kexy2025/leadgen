@@ -1,5 +1,5 @@
-# Lead Management Platform
-# Simple Flask backend for lead processing
+# Lead Management Platform - Production Ready
+# Flask backend with Railway deployment fixes
 
 from flask import Flask, render_template, request, jsonify, send_file
 from flask_cors import CORS
@@ -12,14 +12,26 @@ import hashlib
 from pathlib import Path
 
 app = Flask(__name__)
-CORS(app)
 
-# Configuration
+# PRODUCTION FIX #1: CORS Configuration
+CORS(app, resources={
+    r"/api/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
+
+# PRODUCTION FIX #2: Configuration
 UPLOAD_FOLDER = 'uploads'
 DATABASE = 'leads.db'
 ALLOWED_EXTENSIONS = {'csv', 'xlsx', 'xls'}
 
+# PRODUCTION FIX #3: Ensure uploads folder exists
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# PRODUCTION FIX #4: File size limit (50MB)
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
 # ============================================================================
 # DATABASE SETUP
@@ -27,111 +39,122 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def init_db():
     """Initialize SQLite database with schema"""
-    conn = sqlite3.connect(DATABASE)
-    c = conn.cursor()
-    
-    # Leads table
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS leads (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            lead_id TEXT UNIQUE NOT NULL,
-            name TEXT,
-            email TEXT,
-            last_name TEXT,
-            title TEXT,
-            company_name TEXT,
-            mobile_phone TEXT,
-            company_phone TEXT,
-            employee_count TEXT,
-            person_linkedin_url TEXT,
-            website TEXT,
-            company_linkedin_url TEXT,
-            city TEXT,
-            state TEXT,
-            country TEXT,
-            industry TEXT,
-            source_file TEXT,
-            date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            lead_status TEXT DEFAULT 'Active',
-            duplicate_flag INTEGER DEFAULT 0,
-            processing_notes TEXT
-        )
-    ''')
-    
-    # Config table for schema
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS config (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            canonical_column TEXT UNIQUE NOT NULL,
-            header_aliases TEXT,
-            required INTEGER DEFAULT 0
-        )
-    ''')
-    
-    # Processing log
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS processing_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            source_file TEXT,
-            total_rows INTEGER,
-            new_leads INTEGER,
-            duplicates INTEGER,
-            success_rate REAL,
-            user TEXT
-        )
-    ''')
-    
-    # Mapping history
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS mapping_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            original_header TEXT,
-            action TEXT,
-            target_column TEXT,
-            user TEXT
-        )
-    ''')
-    
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DATABASE)
+        c = conn.cursor()
+        
+        # Leads table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS leads (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                lead_id TEXT UNIQUE NOT NULL,
+                name TEXT,
+                email TEXT,
+                last_name TEXT,
+                title TEXT,
+                company_name TEXT,
+                mobile_phone TEXT,
+                company_phone TEXT,
+                employee_count TEXT,
+                person_linkedin_url TEXT,
+                website TEXT,
+                company_linkedin_url TEXT,
+                city TEXT,
+                state TEXT,
+                country TEXT,
+                industry TEXT,
+                source_file TEXT,
+                date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                lead_status TEXT DEFAULT 'Active',
+                duplicate_flag INTEGER DEFAULT 0,
+                processing_notes TEXT
+            )
+        ''')
+        
+        # Config table for schema
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS config (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                canonical_column TEXT UNIQUE NOT NULL,
+                header_aliases TEXT,
+                required INTEGER DEFAULT 0
+            )
+        ''')
+        
+        # Processing log
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS processing_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                source_file TEXT,
+                total_rows INTEGER,
+                new_leads INTEGER,
+                duplicates INTEGER,
+                success_rate REAL,
+                user TEXT
+            )
+        ''')
+        
+        # Mapping history
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS mapping_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                original_header TEXT,
+                action TEXT,
+                target_column TEXT,
+                user TEXT
+            )
+        ''')
+        
+        conn.commit()
+        conn.close()
+        print("✅ Database initialized successfully")
+        return True
+    except Exception as e:
+        print(f"❌ Database initialization error: {e}")
+        return False
 
 def seed_config():
     """Seed initial configuration"""
-    conn = sqlite3.connect(DATABASE)
-    c = conn.cursor()
-    
-    # Check if config already exists
-    c.execute('SELECT COUNT(*) FROM config')
-    if c.fetchone()[0] > 0:
+    try:
+        conn = sqlite3.connect(DATABASE)
+        c = conn.cursor()
+        
+        # Check if config already exists
+        c.execute('SELECT COUNT(*) FROM config')
+        if c.fetchone()[0] > 0:
+            conn.close()
+            print("✅ Config already seeded")
+            return
+        
+        # Default schema from user requirements
+        default_config = [
+            ('name', 'name,first name,full name,fname', 0),
+            ('email', 'email,email address,e-mail,work email,email addr', 1),
+            ('last_name', 'last name,last,lname,surname', 0),
+            ('title', 'title,job title,position,role', 0),
+            ('company_name', 'company,company name,organization,employer', 0),
+            ('mobile_phone', 'mobile,mobile phone,cell,cell phone,personal phone', 0),
+            ('company_phone', 'phone,company phone,work phone,office phone,telephone', 0),
+            ('employee_count', 'employees,# employees,company size,headcount,# of employees', 0),
+            ('person_linkedin_url', 'linkedin,person linkedin,linkedin url,linkedin profile,profile url', 0),
+            ('website', 'website,url,company url,web,site', 0),
+            ('company_linkedin_url', 'company linkedin,company linkedin url,organization linkedin', 0),
+            ('city', 'city,town,location', 0),
+            ('state', 'state,province,region', 0),
+            ('country', 'country,nation', 0),
+            ('industry', 'industry,sector,vertical,field', 0),
+        ]
+        
+        c.executemany('INSERT INTO config (canonical_column, header_aliases, required) VALUES (?, ?, ?)', 
+                      default_config)
+        conn.commit()
         conn.close()
-        return
-    
-    # Default schema from user requirements
-    default_config = [
-        ('name', 'name,first name,full name,fname', 0),
-        ('email', 'email,email address,e-mail,work email,email addr', 1),
-        ('last_name', 'last name,last,lname,surname', 0),
-        ('title', 'title,job title,position,role', 0),
-        ('company_name', 'company,company name,organization,employer', 0),
-        ('mobile_phone', 'mobile,mobile phone,cell,cell phone,personal phone', 0),
-        ('company_phone', 'phone,company phone,work phone,office phone,telephone', 0),
-        ('employee_count', 'employees,# employees,company size,headcount,# of employees', 0),
-        ('person_linkedin_url', 'linkedin,person linkedin,linkedin url,linkedin profile,profile url', 0),
-        ('website', 'website,url,company url,web,site', 0),
-        ('company_linkedin_url', 'company linkedin,company linkedin url,organization linkedin', 0),
-        ('city', 'city,town,location', 0),
-        ('state', 'state,province,region', 0),
-        ('country', 'country,nation', 0),
-        ('industry', 'industry,sector,vertical,field', 0),
-    ]
-    
-    c.executemany('INSERT INTO config (canonical_column, header_aliases, required) VALUES (?, ?, ?)', 
-                  default_config)
-    conn.commit()
-    conn.close()
+        print("✅ Config seeded successfully")
+    except Exception as e:
+        print(f"❌ Config seeding error: {e}")
 
 # ============================================================================
 # UTILITY FUNCTIONS
@@ -225,113 +248,142 @@ def index():
     """Main dashboard"""
     return render_template('index.html')
 
+@app.route('/api/health')
+def health_check():
+    """Health check endpoint for Railway"""
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': datetime.now().isoformat(),
+        'database': os.path.exists(DATABASE),
+        'uploads_folder': os.path.exists(UPLOAD_FOLDER)
+    })
+
 @app.route('/api/stats')
 def get_stats():
     """Get dashboard statistics"""
-    conn = sqlite3.connect(DATABASE)
-    c = conn.cursor()
-    
-    # Total leads
-    c.execute("SELECT COUNT(*) FROM leads WHERE lead_status = 'Active'")
-    total_leads = c.fetchone()[0]
-    
-    # Duplicates
-    c.execute("SELECT COUNT(*) FROM leads WHERE lead_status = 'Duplicate'")
-    duplicates = c.fetchone()[0]
-    
-    # Recent uploads
-    c.execute("SELECT COUNT(*) FROM processing_log WHERE date(timestamp) = date('now')")
-    today_uploads = c.fetchone()[0]
-    
-    # Success rate
-    c.execute("SELECT AVG(success_rate) FROM processing_log WHERE timestamp >= datetime('now', '-7 days')")
-    avg_success_rate = c.fetchone()[0] or 0
-    
-    conn.close()
-    
-    return jsonify({
-        'total_leads': total_leads,
-        'duplicates': duplicates,
-        'today_uploads': today_uploads,
-        'success_rate': round(avg_success_rate, 1)
-    })
+    try:
+        conn = sqlite3.connect(DATABASE)
+        c = conn.cursor()
+        
+        # Total leads
+        c.execute("SELECT COUNT(*) FROM leads WHERE lead_status = 'Active'")
+        total_leads = c.fetchone()[0]
+        
+        # Duplicates
+        c.execute("SELECT COUNT(*) FROM leads WHERE lead_status = 'Duplicate'")
+        duplicates = c.fetchone()[0]
+        
+        # Recent uploads
+        c.execute("SELECT COUNT(*) FROM processing_log WHERE date(timestamp) = date('now')")
+        today_uploads = c.fetchone()[0]
+        
+        # Success rate
+        c.execute("SELECT AVG(success_rate) FROM processing_log WHERE timestamp >= datetime('now', '-7 days')")
+        avg_success_rate = c.fetchone()[0] or 0
+        
+        conn.close()
+        
+        return jsonify({
+            'total_leads': total_leads,
+            'duplicates': duplicates,
+            'today_uploads': today_uploads,
+            'success_rate': round(avg_success_rate, 1)
+        })
+    except Exception as e:
+        print(f"❌ Stats error: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/leads')
 def get_leads():
     """Get leads with pagination and filtering"""
-    page = int(request.args.get('page', 1))
-    per_page = int(request.args.get('per_page', 50))
-    status = request.args.get('status', 'Active')
-    search = request.args.get('search', '')
-    
-    offset = (page - 1) * per_page
-    
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
-    
-    # Build query
-    query = "SELECT * FROM leads WHERE lead_status = ?"
-    params = [status]
-    
-    if search:
-        query += " AND (email LIKE ? OR name LIKE ? OR company_name LIKE ?)"
-        search_param = f"%{search}%"
-        params.extend([search_param, search_param, search_param])
-    
-    query += " ORDER BY date_added DESC LIMIT ? OFFSET ?"
-    params.extend([per_page, offset])
-    
-    c.execute(query, params)
-    rows = c.fetchall()
-    
-    # Get total count
-    count_query = "SELECT COUNT(*) FROM leads WHERE lead_status = ?"
-    count_params = [status]
-    if search:
-        count_query += " AND (email LIKE ? OR name LIKE ? OR company_name LIKE ?)"
-        count_params.extend([search_param, search_param, search_param])
-    
-    c.execute(count_query, count_params)
-    total = c.fetchone()[0]
-    
-    conn.close()
-    
-    leads = [dict(row) for row in rows]
-    
-    return jsonify({
-        'leads': leads,
-        'total': total,
-        'page': page,
-        'per_page': per_page,
-        'total_pages': (total + per_page - 1) // per_page
-    })
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 50))
+        status = request.args.get('status', 'Active')
+        search = request.args.get('search', '')
+        
+        offset = (page - 1) * per_page
+        
+        conn = sqlite3.connect(DATABASE)
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        
+        # Build query
+        query = "SELECT * FROM leads WHERE lead_status = ?"
+        params = [status]
+        
+        if search:
+            query += " AND (email LIKE ? OR name LIKE ? OR company_name LIKE ?)"
+            search_param = f"%{search}%"
+            params.extend([search_param, search_param, search_param])
+        
+        query += " ORDER BY date_added DESC LIMIT ? OFFSET ?"
+        params.extend([per_page, offset])
+        
+        c.execute(query, params)
+        rows = c.fetchall()
+        
+        # Get total count
+        count_query = "SELECT COUNT(*) FROM leads WHERE lead_status = ?"
+        count_params = [status]
+        if search:
+            count_query += " AND (email LIKE ? OR name LIKE ? OR company_name LIKE ?)"
+            count_params.extend([search_param, search_param, search_param])
+        
+        c.execute(count_query, count_params)
+        total = c.fetchone()[0]
+        
+        conn.close()
+        
+        leads = [dict(row) for row in rows]
+        
+        return jsonify({
+            'leads': leads,
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': (total + per_page - 1) // per_page
+        })
+    except Exception as e:
+        print(f"❌ Get leads error: {e}")
+        return jsonify({'error': str(e)}), 500
 
-@app.route('/api/upload', methods=['POST'])
+@app.route('/api/upload', methods=['POST', 'OPTIONS'])
 def upload_file():
     """Handle file upload and processing"""
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
-    
-    file = request.files['file']
-    
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
-    
-    if not allowed_file(file.filename):
-        return jsonify({'error': 'Invalid file type. Use CSV or Excel.'}), 400
+    # PRODUCTION FIX #5: Handle preflight requests
+    if request.method == 'OPTIONS':
+        return '', 204
     
     try:
+        print("📁 Upload request received")
+        
+        if 'file' not in request.files:
+            print("❌ No file in request")
+            return jsonify({'error': 'No file provided'}), 400
+        
+        file = request.files['file']
+        print(f"📄 File received: {file.filename}")
+        
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        if not allowed_file(file.filename):
+            return jsonify({'error': 'Invalid file type. Use CSV or Excel.'}), 400
+        
         # Save file
         filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}"
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
+        print(f"💾 File saved: {filepath}")
         
         # Parse file
         if filename.endswith('.csv'):
-            df = pd.read_csv(filepath)
+            df = pd.read_csv(filepath, encoding='utf-8', encoding_errors='ignore')
         else:
             df = pd.read_excel(filepath)
+        
+        print(f"📊 Parsed {len(df)} rows")
         
         # Get schema
         schema = get_schema()
@@ -339,6 +391,8 @@ def upload_file():
         # Map headers
         headers = df.columns.tolist()
         header_map, unknown_headers = map_headers(headers, schema)
+        
+        print(f"🗺️ Mapped {len(header_map)} headers, {len(unknown_headers)} unknown")
         
         # If unknown headers, return for user mapping
         if unknown_headers:
@@ -357,10 +411,14 @@ def upload_file():
         
         # Process data
         result = process_data(df, header_map, schema, filename)
+        print(f"✅ Processing complete: {result}")
         
         return jsonify(result)
     
     except Exception as e:
+        print(f"❌ Upload error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/apply_mapping', methods=['POST'])
@@ -538,13 +596,20 @@ def get_config():
     return jsonify(config)
 
 # ============================================================================
-# MAIN
+# INITIALIZATION & MAIN
 # ============================================================================
 
-if __name__ == '__main__':
-    init_db()
+# PRODUCTION FIX #6: Initialize database on import (for Railway)
+print("🚀 Lead Management Platform - Production Mode")
+print("=" * 50)
+if init_db():
     seed_config()
-    print("🚀 Lead Management Platform starting...")
-    print("📊 Database initialized")
-    print("🌐 Server running at http://localhost:5000")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    print("✅ Application ready!")
+else:
+    print("❌ Application failed to initialize")
+print("=" * 50)
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    print(f"🌐 Server starting on port {port}")
+    app.run(debug=False, host='0.0.0.0', port=port)
