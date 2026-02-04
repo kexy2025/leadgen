@@ -1,1 +1,13 @@
-
+Name,Email,Last_Name,Title,Company_Name,Mobile_Phone,Company_Phone,Employee_Count,Person_Linkedin_Url,Website,Company_Linkedin_Url,City,State,Country,Industry
+John,john@acmecorp.com,Doe,CEO,Acme Corporation,555-0101,555-0100,150,https://linkedin.com/in/johndoe,https://acmecorp.com,https://linkedin.com/company/acmecorp,New York,NY,USA,Technology
+Sarah,sarah@testinc.com,Smith,CTO,Test Inc,555-0201,555-0200,75,https://linkedin.com/in/sarahsmith,https://testinc.com,https://linkedin.com/company/testinc,San Francisco,CA,USA,Software
+Mike,mike@example.com,Johnson,VP Sales,Example LLC,555-0301,555-0300,200,https://linkedin.com/in/mikejohnson,https://example.com,https://linkedin.com/company/examplellc,Austin,TX,USA,Marketing
+Emily,emily@democorp.com,Williams,Director,Demo Corp,555-0401,555-0400,50,https://linkedin.com/in/emilywilliams,https://democorp.com,https://linkedin.com/company/democorp,Seattle,WA,USA,Consulting
+David,david@startup.io,Brown,Founder,Startup IO,555-0501,555-0500,25,https://linkedin.com/in/davidbrown,https://startup.io,https://linkedin.com/company/startupio,Boston,MA,USA,Technology
+Lisa,lisa@techcorp.com,Davis,Manager,Tech Corp,555-0601,555-0600,300,https://linkedin.com/in/lisadavis,https://techcorp.com,https://linkedin.com/company/techcorp,Chicago,IL,USA,Technology
+Tom,tom@innovate.net,Miller,Engineer,Innovate Net,555-0701,555-0700,100,https://linkedin.com/in/tommiller,https://innovate.net,https://linkedin.com/company/innovatenet,Denver,CO,USA,Software
+Anna,anna@digital.com,Wilson,Designer,Digital LLC,555-0801,555-0800,60,https://linkedin.com/in/annawilson,https://digital.com,https://linkedin.com/company/digitalllc,Portland,OR,USA,Design
+James,james@solutions.org,Moore,Consultant,Solutions Org,555-0901,555-0900,80,https://linkedin.com/in/jamesmoore,https://solutions.org,https://linkedin.com/company/solutionsorg,Miami,FL,USA,Consulting
+Jennifer,jennifer@global.com,Taylor,VP Marketing,Global Inc,555-1001,555-1000,500,https://linkedin.com/in/jennifertaylor,https://global.com,https://linkedin.com/company/globalinc,Los Angeles,CA,USA,Marketing
+Robert,robert@ventures.co,Anderson,Partner,Ventures Co,555-1101,555-1100,40,https://linkedin.com/in/robertanderson,https://ventures.co,https://linkedin.com/company/venturesco,Phoenix,AZ,USA,Finance
+Maria,maria@enterprise.io,Thomas,Director,Enterprise IO,555-1201,555-1200,250,https://linkedin.com/in/mariathomas,https://enterprise.io,https://linkedin.com/company/enterpriseio,Dallas,TX,USA,Technology
