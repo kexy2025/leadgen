@@ -1,1 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lead Management Platform</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>🎯 Lead Management Platform</h1>
+                <div class="stats-bar">
+                    <div class="stat-item">
+                        <span class="stat-label">Total Leads</span>
+                        <span class="stat-value" id="totalLeads">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Active</span>
+                        <span class="stat-value" id="activeLeads">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Duplicates</span>
+                        <span class="stat-value" id="duplicates">0</span>
+                    </div>
+                </div>
+            </div>
+        </header>
 
+        <!-- Navigation -->
+        <nav class="nav-tabs">
+            <button class="nav-tab active" data-view="dashboard">📊 Dashboard</button>
+            <button class="nav-tab" data-view="leads">📋 Leads</button>
+            <button class="nav-tab" data-view="upload">📤 Upload</button>
+            <button class="nav-tab" data-view="config">⚙️ Config</button>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Dashboard View -->
+            <div id="dashboard-view" class="view active">
+                <div class="welcome-card">
+                    <h2>Welcome to Your Lead Management System</h2>
+                    <p>Manage leads across multiple clients with automatic deduplication and flexible schema.</p>
+                    <div class="quick-actions">
+                        <button class="btn btn-primary" onclick="showView('upload')">📤 Upload Leads</button>
+                        <button class="btn btn-secondary" onclick="showView('leads')">📋 View All Leads</button>
+                    </div>
+                </div>
+
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">🔄</div>
+                        <h3>Auto Deduplication</h3>
+                        <p>Automatically detects and prevents duplicate leads by Email or Phone</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📁</div>
+                        <h3>Multiple Formats</h3>
+                        <p>Upload CSV, Excel, or Google Sheets URLs</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🎨</div>
+                        <h3>Flexible Schema</h3>
+                        <p>Add columns anytime - system adapts automatically</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🤖</div>
+                        <h3>Smart Mapping</h3>
+                        <p>Learns header variations and suggests mappings</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Leads View -->
+            <div id="leads-view" class="view">
+                <div class="view-header">
+                    <h2>All Leads</h2>
+                    <div class="view-actions">
+                        <input type="text" id="searchInput" placeholder="🔍 Search leads..." class="search-input">
+                        <select id="statusFilter" class="filter-select">
+                            <option value="">All Status</option>
+                            <option value="Active">Active</option>
+                            <option value="Duplicate">Duplicate</option>
+                            <option value="Suppressed">Suppressed</option>
+                        </select>
+                        <button class="btn btn-secondary" onclick="exportLeads()">⬇️ Export CSV</button>
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <table class="leads-table" id="leadsTable">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Title</th>
+                                <th>Company</th>
+                                <th>Phone</th>
+                                <th>Status</th>
+                                <th>Date Added</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leadsTableBody">
+                            <tr>
+                                <td colspan="7" class="empty-state">No leads yet. Upload a file to get started!</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination" id="pagination">
+                    <button class="btn btn-sm" onclick="prevPage()">← Previous</button>
+                    <span id="pageInfo">Page 1 of 1</span>
+                    <button class="btn btn-sm" onclick="nextPage()">Next →</button>
+                </div>
+            </div>
+
+            <!-- Upload View -->
+            <div id="upload-view" class="view">
+                <div class="upload-card">
+                    <h2>Upload Leads</h2>
+                    
+                    <!-- File Upload -->
+                    <div class="upload-section">
+                        <h3>📁 Upload File (CSV/Excel)</h3>
+                        <div class="drop-zone" id="dropZone">
+                            <div class="drop-zone-content">
+                                <div class="upload-icon">📤</div>
+                                <p class="drop-zone-text">Drag & drop your file here</p>
+                                <p class="drop-zone-hint">or click to browse</p>
+                                <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display: none;">
+                                <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                                    Choose File
+                                </button>
+                            </div>
+                        </div>
+                        <div id="fileInfo" class="file-info" style="display: none;"></div>
+                    </div>
+
+                    <!-- Google Sheets URL -->
+                    <div class="upload-section">
+                        <h3>🔗 Import from Google Sheets</h3>
+                        <div class="input-group">
+                            <input type="text" id="sheetsUrl" placeholder="Paste Google Sheets URL here..." class="sheets-input">
+                            <button class="btn btn-primary" onclick="importFromSheets()">Import</button>
+                        </div>
+                        <p class="hint">Example: https://docs.google.com/spreadsheets/d/ABC123.../edit</p>
+                    </div>
+
+                    <!-- Upload Progress -->
+                    <div id="uploadProgress" class="upload-progress" style="display: none;">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <p id="progressText">Processing...</p>
+                    </div>
+
+                    <!-- Upload Results -->
+                    <div id="uploadResults" class="upload-results" style="display: none;"></div>
+                </div>
+            </div>
+
+            <!-- Config View -->
+            <div id="config-view" class="view">
+                <div class="config-card">
+                    <h2>Configuration</h2>
+                    
+                    <div class="config-section">
+                        <h3>📋 Canonical Columns</h3>
+                        <p class="hint">These are your master schema columns. All uploaded data maps to these.</p>
+                        <div id="columnsConfig" class="config-list">
+                            <div class="loading">Loading configuration...</div>
+                        </div>
+                    </div>
+
+                    <div class="config-section">
+                        <h3>🔤 Header Aliases</h3>
+                        <p class="hint">Variations of column names that automatically map to canonical columns.</p>
+                        <div id="aliasesConfig" class="aliases-grid">
+                            <div class="loading">Loading aliases...</div>
+                        </div>
+                    </div>
+
+                    <div class="config-section">
+                        <h3>⚙️ System Settings</h3>
+                        <div class="settings-grid">
+                            <div class="setting-item">
+                                <label>
+                                    <strong>Duplicate Detection:</strong>
+                                    <select class="setting-input">
+                                        <option value="email">Email Only</option>
+                                        <option value="email_or_phone" selected>Email OR Phone</option>
+                                        <option value="email_required">Email Required</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <label>
+                                    <strong>Auto-process uploads:</strong>
+                                    <input type="checkbox" checked> Enabled
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Mapping Modal -->
+    <div id="mappingModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🔀 Map Unknown Headers</h3>
+                <button class="modal-close" onclick="closeMappingModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p class="hint">We found some headers that don't match your schema. Please map them:</p>
+                <div id="mappingList" class="mapping-list">
+                    <!-- Dynamic mapping items will be inserted here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeMappingModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="applyMappings()">Apply & Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
